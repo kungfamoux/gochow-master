@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
 import { useCart } from '../context/CartContext'
+import { Link, useLocation } from 'react-router-dom'
 
 const Navbar = () => {
-  const { cart, setIsCartOpen } = useCart()
+  const { cart, setIsCartOpen, setShowOrderHistory, setShowOrderLookup } = useCart()
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const location = useLocation()
   
   const cartItemCount = cart.reduce((acc, item) => acc + item.quantity, 0)
   
@@ -13,24 +15,26 @@ const Navbar = () => {
   }
 
   const navItems = [
-    { name: 'Home', href: 'home' },
-    { name: 'Menu', href: 'menu' },
-    { name: 'Services', href: 'services' },
-    { name: 'About', href: 'about' }
+    { name: 'Home', path: '/', section: 'home' },
+    { name: 'Menu', path: '/menu', section: 'menu' },
+    { name: 'Services', path: '/', section: 'services' },
+    { name: 'About', path: '/', section: 'about' }
   ]
   
-  const handleNavClick = (e, href) => {
-    e.preventDefault()
-    const element = document.getElementById(href)
-    if (element) {
-      const offset = 80
-      const elementPosition = element.getBoundingClientRect().top
-      const offsetPosition = elementPosition + window.pageYOffset - offset
+  const handleNavClick = (e, path, section) => {
+    if (location.pathname === path && section) {
+      e.preventDefault()
+      const element = document.getElementById(section)
+      if (element) {
+        const offset = 80
+        const elementPosition = element.getBoundingClientRect().top
+        const offsetPosition = elementPosition + window.pageYOffset - offset
 
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      })
+        window.scrollTo({
+          top: offsetPosition,
+          behavior: 'smooth'
+        })
+      }
     }
     if (isMobileMenuOpen) {
       toggleMobileMenu()
@@ -41,19 +45,19 @@ const Navbar = () => {
     <nav className='bg-[#FBFAF9] w-full font-Montserrat p-6 relative z-50'>
       <div className='flex flex-row justify-between items-center'>
         <div className='flex items-center gap-12'>
-          <h1 className='text-[#FA6000] text-2xl font-bold'>GoChow</h1>
+          <Link to="/" className='text-[#FA6000] text-2xl font-bold'>GoChow</Link>
           
           {/* Desktop Menu */}
           <div className='hidden md:flex gap-8'>
             {navItems.map(item => (
-              <a 
-                key={item.href}
-                href={`#${item.href}`}
-                onClick={(e) => handleNavClick(e, item.href)}
+              <Link 
+                key={item.path + item.section}
+                to={item.path}
+                onClick={(e) => handleNavClick(e, item.path, item.section)}
                 className='text-[#674F41] hover:text-[#FA6000] transition-colors'
               >
                 {item.name}
-              </a>
+              </Link>
             ))}
           </div>
         </div>
@@ -69,6 +73,20 @@ const Navbar = () => {
                 {cartItemCount}
               </span>
             )}
+          </button>
+
+          <button 
+            onClick={() => setShowOrderHistory(true)}
+            className="text-[#674F41] hover:text-[#FA6000] transition-colors"
+          >
+            📋 Orders
+          </button>
+
+          <button 
+            onClick={() => setShowOrderLookup(true)}
+            className="text-[#674F41] hover:text-[#FA6000] transition-colors"
+          >
+            🔍 Track Order
           </button>
 
           {/* Animated Mobile Menu Button */}
@@ -95,10 +113,10 @@ const Navbar = () => {
       }`}>
         <div className='flex flex-col items-center justify-center h-full space-y-8'>
           {navItems.map((item, index) => (
-            <a
-              key={item.href}
-              href={`#${item.href}`}
-              onClick={(e) => handleNavClick(e, item.href)}
+            <Link
+              key={item.path + item.section}
+              to={item.path}
+              onClick={(e) => handleNavClick(e, item.path, item.section)}
               className={`text-xl text-[#674F41] hover:text-[#FA6000] transform transition-all duration-500 ${
                 isMobileMenuOpen 
                   ? 'translate-x-0 opacity-100' 
@@ -107,7 +125,7 @@ const Navbar = () => {
               style={{ transitionDelay: `${index * 100}ms` }}
             >
               {item.name}
-            </a>
+            </Link>
           ))}
         </div>
       </div>

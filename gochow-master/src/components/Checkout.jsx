@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { useCart } from '../context/CartContext'
+import PaystackPayment from './PaystackPayment'
 
 const Checkout = () => {
   const { 
@@ -37,14 +38,14 @@ const Checkout = () => {
     try {
       console.log('Starting order placement...')
       
-      // Validate email
       if (!formData.email) {
         throw new Error('Email is required')
       }
 
       const order = await placeOrder({
         ...formData,
-        status: 'pending'
+        status: 'pending',
+        paymentMethod: 'cash'
       })
 
       console.log('Order placed successfully:', order)
@@ -55,12 +56,33 @@ const Checkout = () => {
     }
   }
 
+  const handlePaystackSuccess = async (reference) => {
+    try {
+      const order = await placeOrder({
+        ...formData,
+        status: 'paid',
+        paymentReference: reference.reference,
+        paymentMethod: 'paystack'
+      })
+
+      console.log('Order placed successfully:', order)
+      setCheckoutStep(3)
+    } catch (error) {
+      console.error('Order placement failed:', error)
+      alert(`Failed to place order: ${error.message}`)
+    }
+  }
+
+  const handlePaystackClose = () => {
+    console.log('Payment cancelled')
+  }
+
   // Add loading spinner component
   const LoadingSpinner = () => (
     <div className='fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50'>
       <div className='bg-white p-6 rounded-lg flex flex-col items-center'>
         <div className='animate-spin rounded-full h-12 w-12 border-b-2 border-[#FA6000]'></div>
-        <p className='mt-4 text-gray-600'>Processing your order...</p>
+        <p className='mt-4 text-gray-600'>Placing your order...</p>
       </div>
     </div>
   )
@@ -170,19 +192,49 @@ const Checkout = () => {
           <div className='space-y-6'>
             <div className='bg-gray-50 p-6 rounded-lg'>
               <h3 className='font-bold mb-4'>Payment Method</h3>
-              <div className='p-4 border rounded-lg'>
-                <div className='flex items-center justify-between'>
-                  <div className='flex items-center gap-3'>
-                    <span className='text-2xl'>💵</span>
-                    <div>
-                      <h4 className='font-semibold'>Cash on Delivery</h4>
-                      <p className='text-sm text-gray-500'>Pay when you receive your order</p>
+              <div className='space-y-4'>
+                {/* Cash on Delivery Option */}
+                <div className='p-4 border rounded-lg cursor-pointer hover:border-[#FA6000]'>
+                  <div className='flex items-center justify-between'>
+                    <div className='flex items-center gap-3'>
+                      <span className='text-2xl'>💵</span>
+                      <div>
+                        <h4 className='font-semibold'>Cash on Delivery</h4>
+                        <p className='text-sm text-gray-500'>Pay when you receive your order</p>
+                      </div>
                     </div>
+                    <button 
+                      onClick={handlePlaceOrder}
+                      className='px-6 py-2 bg-[#FA6000] text-white rounded-full hover:bg-[#ea580c]'
+                      disabled={isLoading}
+                    >
+                      Select
+                    </button>
+                  </div>
+                </div>
+
+                {/* Paystack Option */}
+                <div className='p-4 border rounded-lg'>
+                  <div className='flex items-center justify-between'>
+                    <div className='flex items-center gap-3'>
+                      <span className='text-2xl'>💳</span>
+                      <div>
+                        <h4 className='font-semibold'>Pay Online</h4>
+                        <p className='text-sm text-gray-500'>Secure payment with Paystack</p>
+                      </div>
+                    </div>
+                    <PaystackPayment 
+                      amount={grandTotal}
+                      email={formData.email}
+                      onSuccess={handlePaystackSuccess}
+                      onClose={handlePaystackClose}
+                    />
                   </div>
                 </div>
               </div>
             </div>
 
+            {/* Order Summary */}
             <div className='bg-gray-50 p-6 rounded-lg'>
               <h3 className='font-bold mb-4'>Order Summary</h3>
               <div className='space-y-2'>
@@ -209,22 +261,13 @@ const Checkout = () => {
               </div>
             </div>
 
-            <div className='flex gap-4'>
-              <button 
-                onClick={() => setCheckoutStep(1)}
-                className='w-1/2 border-2 border-[#FA6000] text-[#FA6000] py-3 rounded-full hover:bg-[#FA6000] hover:text-white transition-colors'
-                disabled={isLoading}
-              >
-                Back
-              </button>
-              <button 
-                onClick={handlePlaceOrder}
-                className='w-1/2 bg-[#FA6000] text-white py-3 rounded-full hover:bg-[#ea580c] transition-colors disabled:opacity-50'
-                disabled={isLoading}
-              >
-                {isLoading ? 'Processing...' : 'Place Order'}
-              </button>
-            </div>
+            <button 
+              onClick={() => setCheckoutStep(1)}
+              className='w-full border-2 border-[#FA6000] text-[#FA6000] py-3 rounded-full hover:bg-[#FA6000] hover:text-white transition-colors'
+              disabled={isLoading}
+            >
+              Back to Delivery Details
+            </button>
           </div>
         )}
 

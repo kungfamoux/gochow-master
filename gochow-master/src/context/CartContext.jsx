@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useState } from 'react'
+import React, { createContext, useContext, useState, useEffect } from 'react'
 import { sendOrderConfirmation } from '../services/emailService'
+import { sendNotification, requestNotificationPermission } from '../services/notificationService'
 
 const CartContext = createContext()
 
@@ -12,6 +13,26 @@ export const CartProvider = ({ children }) => {
   const [orderHistory, setOrderHistory] = useState([])
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [currentOrder, setCurrentOrder] = useState(null)
+  const [showTracking, setShowTracking] = useState(false)
+  const [showOrderHistory, setShowOrderHistory] = useState(false)
+  const [showOrderLookup, setShowOrderLookup] = useState(false)
+
+  // Load orders from localStorage on mount
+  useEffect(() => {
+    const savedOrders = localStorage.getItem('orderHistory')
+    if (savedOrders) {
+      setOrderHistory(JSON.parse(savedOrders))
+    }
+
+    // Request notification permission
+    requestNotificationPermission()
+  }, [])
+
+  // Save orders to localStorage when updated
+  useEffect(() => {
+    localStorage.setItem('orderHistory', JSON.stringify(orderHistory))
+  }, [orderHistory])
 
   const addToCart = (item) => {
     setCart(prevCart => {
@@ -56,14 +77,15 @@ export const CartProvider = ({ children }) => {
   }
 
   const placeOrder = async (orderDetails) => {
-    setIsLoading(true)
-    setError(null)
     try {
+      setIsLoading(true)
+      setError(null)
+      
       const newOrder = {
         id: `GO${Math.random().toString().slice(2, 10)}`,
         items: [...cart],
-        total: getCartTotal() + 1000, // Including delivery fee
-        status: orderDetails.status,
+        total: getCartTotal() + 1000,
+        status: 'pending',
         ...orderDetails,
         date: new Date().toISOString()
       }
@@ -71,15 +93,21 @@ export const CartProvider = ({ children }) => {
       // Send email notification
       await sendOrderConfirmation(newOrder)
 
+      // Send push notification
+      sendNotification('Order Placed Successfully!', {
+        body: `Your order #${newOrder.id} has been received and is being processed.`,
+        tag: newOrder.id
+      })
+
       // Update order history
       setOrderHistory(prev => [newOrder, ...prev])
-      
-      // Clear cart
       setCart([])
-      
-      return newOrder
+      setCurrentOrder(newOrder.id)
+      setShowTracking(true)
+
+      return newOrder.id
     } catch (error) {
-      setError('Failed to process order. Please try again.')
+      setError(error.message)
       throw error
     } finally {
       setIsLoading(false)
@@ -89,6 +117,10 @@ export const CartProvider = ({ children }) => {
   const canAddToCart = (itemId) => {
     const item = cart.find(cartItem => cartItem.id === itemId)
     return !item || item.quantity < MAX_QUANTITY
+  }
+
+  const findOrder = (orderId) => {
+    return orderHistory.find(order => order.id === orderId)
   }
 
   return (
@@ -104,7 +136,15 @@ export const CartProvider = ({ children }) => {
       orderHistory,
       canAddToCart,
       isLoading,
-      error
+      error,
+      currentOrder,
+      showTracking,
+      setShowTracking,
+      showOrderHistory,
+      setShowOrderHistory,
+      showOrderLookup,
+      setShowOrderLookup,
+      findOrder
     }}>
       {children}
     </CartContext.Provider>
